@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1e1e">
+<title>Xp to Max</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column like the RuneLite side panel, phone first; summary card, goal card, then one row per skill. */
+:root {
+	--bg: #f2f0ec;
+	--panel: #ffffff;
+	--panel-2: #e9e6e0;
+	--fg: #1d1c1a;
+	--muted: #6b6760;
+	--line: #d9d4cb;
+	--behind: #c87410;      /* RuneLite "in progress" orange, darkened for light ground */
+	--ahead: #1f9a35;       /* RuneLite "complete" green, darkened for light ground */
+	--track: #dcd7ce;
+	--danger: #b3261e;
+	--font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+	--font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #1a1a1a;
+		--panel: #262626;
+		--panel-2: #303030;
+		--fg: #f1f1f1;
+		--muted: #a5a5a5;
+		--line: #3a3a3a;
+		--behind: #e6961e;
+		--ahead: #37d046;
+		--track: #3d3d3d;
+		--danger: #ff8a80;
+		color-scheme: dark;
+	}
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--fg);
+	font: 15px/1.4 var(--font-body);
+	padding-top: env(safe-area-inset-top, 0px);
+	padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+.wrap {
+	max-width: 560px;
+	margin: 0 auto;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+	padding-block: 16px;
+	display: grid;
+	gap: 12px;
+}
+.num { font-variant-numeric: tabular-nums; }
+.label {
+	font: 600 12px/1 var(--font-body);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+.card {
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	padding: 14px 16px;
+	display: grid;
+	gap: 6px;
+}
+
+/* top bar */
+.top { display: flex; align-items: center; gap: 8px; }
+.top h1 { margin: 0; font: 700 22px/1 var(--font-display); letter-spacing: 0.02em; flex: 1; min-width: 0; }
+.chip {
+	font: 500 13px/1 var(--font-body);
+	border: 1px solid var(--line);
+	background: var(--panel);
+	color: var(--fg);
+	border-radius: 999px;
+	padding: 7px 12px;
+	cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.top h1 .who { font: 500 15px/1 var(--font-body); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.icon-btn {
+	border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+	border-radius: 6px; width: 36px; height: 34px; cursor: pointer; font-size: 17px; line-height: 1;
+}
+.accounts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* summary */
+.big { font: 700 44px/1 var(--font-display); letter-spacing: 0.01em; }
+.sub { color: var(--muted); font-size: 13px; }
+
+/* bars */
+.bar {
+	position: relative;
+	height: 22px;
+	background: var(--track);
+	border-radius: 3px;
+	overflow: hidden;
+}
+.bar > i { position: absolute; inset: 0 auto 0 0; background: var(--behind); width: 0; transition: width .4s ease; }
+.bar.ok > i { background: var(--ahead); }
+.bar > span {
+	position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between;
+	padding: 0 8px; font: 600 13px/1 var(--font-body); color: var(--fg);
+	text-shadow: 0 0 3px var(--panel);
+}
+.bar.thin { height: 6px; border-radius: 3px; }
+.goal-title { font: 700 20px/1.1 var(--font-display); }
+
+/* buttons */
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+button.primary, button.secondary {
+	font: 600 14px/1 var(--font-body); padding: 11px 12px; border-radius: 6px; cursor: pointer;
+	border: 1px solid var(--line); background: var(--panel-2); color: var(--fg);
+}
+button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible, .chip:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--behind); outline-offset: 2px; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+.status.err { color: var(--danger); }
+
+/* skills */
+.skills { display: grid; gap: 6px; }
+.skill {
+	background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+	padding: 9px 12px 10px; display: grid; gap: 6px;
+}
+.skill .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.skill .name { font: 600 15px/1.2 var(--font-body); }
+.skill .left { color: var(--muted); font-size: 13px; }
+.skill .need { font-size: 13px; font-weight: 600; text-align: right; white-space: nowrap; }
+.skill .need.ok { color: var(--ahead); }
+.skill .gained { color: var(--muted); font-size: 13px; text-align: right; white-space: nowrap; }
+.skill .col { display: grid; gap: 2px; min-width: 0; }
+.skill.done .left { color: var(--ahead); font-weight: 600; }
+
+/* settings */
+details.settings > summary { cursor: pointer; list-style: none; }
+details.settings > summary::-webkit-details-marker { display: none; }
+.form { display: grid; gap: 10px; margin-top: 10px; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: 13px; color: var(--muted); }
+.field input, .field select {
+	font: 15px var(--font-body); padding: 9px 10px; border-radius: 6px;
+	border: 1px solid var(--line); background: var(--bg); color: var(--fg); width: 100%;
+}
+.hint { font-size: 12px; color: var(--muted); }
+.foot { font-size: 12px; color: var(--muted); text-align: center; }
+.foot a { color: inherit; }
+.empty { text-align: center; color: var(--muted); padding: 24px 8px; }
+@media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+	<div class="top">
+		<h1>Xp to Max <span class="who" id="who"></span></h1>
+		<button class="icon-btn" id="refreshBtn" type="button" title="Reload from Wise Old Man" aria-label="Reload from Wise Old Man">&#x21bb;</button>
+	</div>
+
+	<section class="card" id="summary">
+		<div class="label">XP to max</div>
+		<div class="big num" id="total">&mdash;</div>
+		<div class="sub num" id="totalSub">Loading...</div>
+	</section>
+
+	<section class="card" id="goal">
+		<div class="goal-title" id="goalTitle">No goal set</div>
+		<div class="bar" id="goalBar" hidden><i></i><span><b class="num" id="goalLeft"></b><b class="num" id="goalRight"></b></span></div>
+		<div class="sub num" id="goalDetail">Set a "Maxed by" date in Settings for a weekly target.</div>
+		<div class="sub" id="goalNote"></div>
+	</section>
+
+	<div class="actions">
+		<button class="primary" id="updateBtn" type="button">Update Wise Old Man</button>
+		<button class="secondary" id="sortBtn" type="button">Sort: XP left</button>
+	</div>
+	<div class="status" id="status" role="status"></div>
+
+	<section class="skills" id="skills" aria-label="Skills"></section>
+
+	<section class="card">
+		<details class="settings" id="settings">
+			<summary class="label">Settings</summary>
+			<form class="form" id="form" autocomplete="off">
+				<div class="field">
+					<label for="name">RuneScape name</label>
+					<input id="name" type="text" placeholder="Your name on Wise Old Man" spellcheck="false" autocapitalize="off" autocorrect="off">
+				</div>
+				<div class="field">
+					<label for="goalDate">Maxed by</label>
+					<input id="goalDate" type="date">
+				</div>
+				<div class="field">
+					<label for="weekStart">Week starts on</label>
+					<select id="weekStart">
+						<option value="1">Monday</option>
+						<option value="2">Tuesday</option>
+						<option value="3">Wednesday</option>
+						<option value="4">Thursday</option>
+						<option value="5">Friday</option>
+						<option value="6">Saturday</option>
+						<option value="0">Sunday</option>
+					</select>
+				</div>
+				<button class="primary" type="submit">Save</button>
+				<div class="hint">Saved on this phone only. Use the same date and week start as in the RuneLite plugin so both show the same target.</div>
+			</form>
+		</details>
+	</section>
+
+	<div class="foot">Data from <a href="https://wiseoldman.net" target="_blank" rel="noopener">Wise Old Man</a>. This week counts from Wise Old Man's first snapshot of the week.</div>
+</div>
+
+<script>
+(function () {
+	"use strict";
+
+	var API = "https://api.wiseoldman.net/v2/players/";
+	var MAX_XP = 13034431; // level 99
+	var SKILLS = [
+		["attack", "Attack"], ["defence", "Defence"], ["strength", "Strength"], ["hitpoints", "Hitpoints"],
+		["ranged", "Ranged"], ["prayer", "Prayer"], ["magic", "Magic"], ["cooking", "Cooking"],
+		["woodcutting", "Woodcutting"], ["fletching", "Fletching"], ["fishing", "Fishing"], ["firemaking", "Firemaking"],
+		["crafting", "Crafting"], ["smithing", "Smithing"], ["mining", "Mining"], ["herblore", "Herblore"],
+		["agility", "Agility"], ["thieving", "Thieving"], ["slayer", "Slayer"], ["farming", "Farming"],
+		["runecrafting", "Runecraft"], ["hunter", "Hunter"], ["construction", "Construction"], ["sailing", "Sailing"]
+	];
+	var SORTS = [["left", "XP left"], ["week", "Most to go this week"], ["gained", "Most gained this week"], ["name", "Name"]];
+
+	var $ = function (id) { return document.getElementById(id); };
+
+	// ---------- settings (this device only) ----------
+	// The RuneScape name is never part of the page: it is typed once and kept in this browser only.
+	var DEFAULT_GOAL = "2027-06-18";
+	var settings = load();
+	function load() {
+		var s = { active: "", goalDate: DEFAULT_GOAL, weekStart: 1, sort: "left" };
+		try {
+			var raw = localStorage.getItem("xptomax.settings");
+			if (raw) {
+				var o = JSON.parse(raw);
+				if (typeof o.active === "string") s.active = o.active.trim();
+				if (typeof o.goalDate === "string") s.goalDate = o.goalDate;
+				if (typeof o.weekStart === "number") s.weekStart = o.weekStart;
+				if (typeof o.sort === "string") s.sort = o.sort;
+			}
+		} catch (e) { /* storage blocked: work without it */ }
+		return s;
+	}
+	function save() {
+		try { localStorage.setItem("xptomax.settings", JSON.stringify(settings)); } catch (e) { /* ignore */ }
+	}
+
+	// ---------- formatting (same rules as the plugin) ----------
+	function compact(n) {
+		var v = Math.round(n), neg = v < 0, a = Math.abs(v), s;
+		if (a >= 10000000) s = (a / 1e6).toFixed(1) + "m";
+		else if (a >= 1000000) s = (a / 1e6).toFixed(2) + "m";
+		else if (a >= 100000) s = Math.round(a / 1e3) + "k";
+		else if (a >= 1000) s = (a / 1e3).toFixed(1) + "k";
+		else s = String(a);
+		return neg ? "-" + s : s;
+	}
+	function full(n) { return Math.round(n).toLocaleString("en-US"); }
+	function ago(iso) {
+		if (!iso) return "";
+		var s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+		if (s < 60) return "just now";
+		if (s < 3600) return Math.floor(s / 60) + "m ago";
+		if (s < 86400) return Math.floor(s / 3600) + "h ago";
+		return Math.floor(s / 86400) + "d ago";
+	}
+	function niceDate(d) {
+		return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+	}
+
+	// ---------- week maths (same as the plugin's PeriodType.WEEK) ----------
+	function weekStart(now, startDow) {
+		var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		var back = (d.getDay() - startDow + 7) % 7;
+		d.setDate(d.getDate() - back);
+		return d;
+	}
+	function parseDate(str) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str || "");
+		if (!m) return null;
+		var d = new Date(+m[1], +m[2] - 1, +m[3]);
+		return d.getMonth() === +m[2] - 1 ? d : null;
+	}
+	function weeksLeft(periodStart, end) {
+		var days = Math.round((end - periodStart) / 86400000) + 1;
+		return days <= 0 ? 0 : Math.floor((days + 6) / 7);
+	}
+
+	// ---------- data ----------
+	var state = { player: null, gained: null, error: "", busy: true, name: "" };
+
+	function getJson(url, opts) {
+		return fetch(url, opts).then(function (r) {
+			return r.text().then(function (t) {
+				var body = null;
+				try { body = t ? JSON.parse(t) : null; } catch (e) { /* not json */ }
+				if (!r.ok) {
+					var msg = body && body.message ? body.message : "Wise Old Man error " + r.status;
+					if (r.status === 404) msg = "That name is not tracked on Wise Old Man yet. Press Update Wise Old Man to add it.";
+					if (r.status === 429) msg = "Wise Old Man rate limit hit. Try again in a minute.";
+					var err = new Error(msg); err.status = r.status; throw err;
+				}
+				return body;
+			});
+		});
+	}
+
+	function loadAll() {
+		var name = settings.active;
+		if (!name) { state.player = null; state.gained = null; state.busy = false; render(); return Promise.resolve(); }
+		state.busy = true; state.name = name; state.error = "";
+		setStatus("Loading " + name + "...");
+		var start = weekStart(new Date(), settings.weekStart);
+		var enc = encodeURIComponent(name);
+		var gainedUrl = API + enc + "/gained?startDate=" + encodeURIComponent(start.toISOString()) +
+			"&endDate=" + encodeURIComponent(new Date().toISOString());
+		return Promise.all([getJson(API + enc), getJson(gainedUrl).catch(function () { return null; })])
+			.then(function (res) {
+				if (state.name !== name) return;
+				state.player = res[0]; state.gained = res[1];
+				setStatus("");
+			})
+			.catch(function (e) {
+				if (state.name !== name) return;
+				state.player = null; state.gained = null;
+				setStatus(e.message, true);
+			})
+			.then(function () { state.busy = false; render(); });
+	}
+
+	function updateWom() {
+		var name = settings.active;
+		if (!name) { setStatus("Add your RuneScape name in Settings first.", true); $("settings").open = true; return; }
+		$("updateBtn").disabled = true;
+		setStatus("Asking Wise Old Man to read the hiscores...");
+		getJson(API + encodeURIComponent(name), { method: "POST" })
+			.then(function () { return loadAll(); })
+			.then(function () { if (!$("status").classList.contains("err")) setStatus("Wise Old Man updated."); })
+			.catch(function (e) { setStatus(e.message, true); })
+			.then(function () { $("updateBtn").disabled = false; });
+	}
+
+	function setStatus(msg, isErr) {
+		var el = $("status");
+		el.textContent = msg || "";
+		el.classList.toggle("err", !!isErr);
+	}
+
+	// ---------- calculation ----------
+	function compute() {
+		var p = state.player;
+		if (!p || !p.latestSnapshot || !p.latestSnapshot.data) return null;
+		var skills = p.latestSnapshot.data.skills || {};
+		var gainedSkills = state.gained && state.gained.data && state.gained.data.skills ? state.gained.data.skills : null;
+
+		var now = new Date();
+		var ps = weekStart(now, settings.weekStart);
+		var end = parseDate(settings.goalDate);
+		var n = end ? weeksLeft(ps, end) : 0;
+		var goalState = !settings.goalDate ? "none" : !end ? "invalid" : n <= 0 ? "passed" : "active";
+		var active = goalState === "active";
+
+		var rows = [], totalLeft = 0, totalGained = 0, left = 0;
+		SKILLS.forEach(function (sk) {
+			var s = skills[sk[0]];
+			var xp = s ? Math.max(0, s.experience) : 0;
+			var capped = Math.min(xp, MAX_XP);
+			var remaining = MAX_XP - capped;
+			var gained = 0;
+			if (gainedSkills && gainedSkills[sk[0]] && gainedSkills[sk[0]].experience) {
+				var startXp = gainedSkills[sk[0]].experience.start;
+				if (typeof startXp === "number" && startXp > 0) {
+					gained = Math.max(0, capped - Math.min(startXp, MAX_XP));
+				}
+			}
+			var required = active ? (remaining + gained) / n : NaN;
+			totalLeft += remaining; totalGained += gained;
+			if (remaining > 0) left++;
+			rows.push({ key: sk[0], name: sk[1], xp: xp, remaining: remaining, gained: gained, required: required, toGo: required - gained });
+		});
+
+		var sort = settings.sort;
+		rows.sort(function (a, b) {
+			if (sort === "name") return a.name.localeCompare(b.name);
+			if (sort === "gained") return (b.gained - a.gained) || (b.remaining - a.remaining);
+			if (sort === "week" && active) return (b.toGo - a.toGo) || (b.remaining - a.remaining);
+			return b.remaining - a.remaining;
+		});
+
+		return {
+			rows: rows, totalLeft: totalLeft, totalGained: totalGained, skillsLeft: left,
+			goalState: goalState, end: end, weeks: n,
+			required: active ? (totalLeft + totalGained) / n : NaN,
+			snapshotAt: p.latestSnapshot.createdAt || p.updatedAt,
+			weekFrom: state.gained && state.gained.startsAt ? state.gained.startsAt : null
+		};
+	}
+
+	// ---------- rendering ----------
+	function render() {
+		$("who").textContent = settings.active;
+		$("sortBtn").textContent = "Sort: " + SORTS.filter(function (s) { return s[0] === settings.sort; })[0][1];
+		var r = compute();
+		var list = $("skills");
+		list.textContent = "";
+
+		if (!r) {
+			$("total").textContent = "—";
+			if (!settings.active) {
+				$("totalSub").textContent = "Add your RuneScape name in Settings below. It is saved on this device only.";
+				$("settings").open = true;
+			} else {
+				$("totalSub").textContent = state.busy ? "Loading..." : "No data for " + settings.active + " yet.";
+			}
+			$("goalBar").hidden = true;
+			$("goalTitle").textContent = "No goal set";
+			$("goalDetail").textContent = "";
+			$("goalNote").textContent = "";
+			return;
+		}
+
+		$("total").textContent = compact(r.totalLeft);
+		$("total").title = full(r.totalLeft) + " XP left to 99 in every skill";
+		$("totalSub").textContent = r.skillsLeft + " of 24 skills to go  |  Wise Old Man " + ago(r.snapshotAt);
+
+		var bar = $("goalBar");
+		bar.hidden = r.goalState !== "active";
+		if (r.goalState === "none") {
+			$("goalTitle").textContent = "No goal set";
+			$("goalDetail").textContent = "Set a \"Maxed by\" date in Settings for a weekly target.";
+		} else if (r.goalState === "invalid") {
+			$("goalTitle").textContent = "Goal date not understood";
+			$("goalDetail").textContent = "Pick a date in Settings.";
+		} else if (r.goalState === "passed") {
+			$("goalTitle").textContent = "Goal date has passed";
+			$("goalDetail").textContent = "Was " + niceDate(r.end) + ". Pick a new date in Settings.";
+		} else {
+			$("goalTitle").textContent = "Maxed by " + niceDate(r.end);
+			var max = Math.max(1, Math.round(r.required));
+			var pct = Math.round(r.totalGained * 100 / max);
+			bar.querySelector("i").style.width = Math.min(100, pct) + "%";
+			bar.classList.toggle("ok", r.totalGained >= r.required);
+			$("goalLeft").textContent = compact(r.totalGained) + "/" + compact(r.required);
+			$("goalRight").textContent = pct + "%";
+			var toGo = r.required - r.totalGained;
+			var weeks = r.weeks + " week" + (r.weeks === 1 ? "" : "s") + " left";
+			$("goalDetail").textContent = toGo > 0
+				? compact(toGo) + " more this week  |  " + weeks
+				: "On pace, " + compact(-toGo) + " ahead  |  " + weeks;
+		}
+		$("goalNote").textContent = r.weekFrom
+			? "This week counted from Wise Old Man's snapshot of " + new Date(r.weekFrom).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" }) + "."
+			: (r.goalState === "active" ? "No Wise Old Man snapshot this week yet, so nothing counts as gained. Press Update Wise Old Man." : "");
+
+		var active = r.goalState === "active";
+		r.rows.forEach(function (row) {
+			var done = row.remaining <= 0;
+			var met = active && row.toGo <= 0;
+			var pct99 = Math.floor(Math.min(row.xp, MAX_XP) * 100 / MAX_XP);
+
+			var el = document.createElement("div");
+			el.className = "skill" + (done ? " done" : "");
+			el.title = row.name + ": " + full(row.xp) + " XP, " + full(row.remaining) + " left to 99 (" + pct99 + "%)";
+
+			var line = document.createElement("div"); line.className = "row";
+			var a = document.createElement("div"); a.className = "col";
+			var nm = document.createElement("div"); nm.className = "name"; nm.textContent = row.name;
+			var lf = document.createElement("div"); lf.className = "left num";
+			lf.textContent = done ? "99" : compact(row.remaining) + " left  " + pct99 + "%";
+			a.appendChild(nm); a.appendChild(lf);
+
+			var b = document.createElement("div"); b.className = "col";
+			var nd = document.createElement("div"); nd.className = "need num" + (met ? " ok" : "");
+			nd.textContent = done || !active ? "" : "need " + compact(row.required);
+			var gd = document.createElement("div"); gd.className = "gained num";
+			gd.textContent = "gained " + compact(row.gained);
+			b.appendChild(nd); b.appendChild(gd);
+
+			line.appendChild(a); line.appendChild(b);
+
+			var bar99 = document.createElement("div");
+			bar99.className = "bar thin" + (done || met ? " ok" : "");
+			var fill = document.createElement("i");
+			fill.style.width = pct99 + "%";
+			bar99.appendChild(fill);
+
+			el.appendChild(line); el.appendChild(bar99);
+			list.appendChild(el);
+		});
+	}
+
+	// ---------- wiring ----------
+	function fillForm() {
+		$("name").value = settings.active;
+		$("goalDate").value = settings.goalDate;
+		$("weekStart").value = String(settings.weekStart);
+	}
+	$("form").addEventListener("submit", function (e) {
+		e.preventDefault();
+		settings.active = $("name").value.trim();
+		settings.goalDate = $("goalDate").value;
+		settings.weekStart = parseInt($("weekStart").value, 10);
+		save();
+		$("settings").open = false;
+		loadAll();
+	});
+	$("updateBtn").addEventListener("click", updateWom);
+	$("refreshBtn").addEventListener("click", function () { loadAll(); });
+	$("sortBtn").addEventListener("click", function () {
+		var i = SORTS.map(function (s) { return s[0]; }).indexOf(settings.sort);
+		settings.sort = SORTS[(i + 1) % SORTS.length][0];
+		save(); render();
+	});
+	document.addEventListener("visibilitychange", function () {
+		if (document.visibilityState === "visible" && settings.active && !state.busy) loadAll();
+	});
+
+	fillForm();
+	render();
+	loadAll();
+})();
+</script>
+</body>
+</html>
